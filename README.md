@@ -2,6 +2,17 @@
 
 Forward audio from one PC to another using a TCP socket
 
+## Build
+
+Dependencies:
+  - portaudio19-dev
+
+Compile the program:
+
+```bash
+go build .
+```
+
 ## Usage
 
 Start the server on the remote PC:
