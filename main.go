@@ -13,21 +13,21 @@ import (
 )
 
 const (
-	DEFAULT_PORT = 8322
-	NUM_CHANNELS = 2
-	SAMPLE_RATE  = 44100
+	DEFAULT_PORT    = 8322
+	NUM_CHANNELS    = 2
+	SAMPLE_RATE     = 44100
+	BUFFER_DURATION = 100
 )
 
 var (
 	BYTE_ORDER = binary.BigEndian
-	BUFFER     = make([]int32, 1024)
+	BUFFER     = make([]int32, SAMPLE_RATE*NUM_CHANNELS/BUFFER_DURATION)
 )
 
 func main() {
-	if err := portaudio.Initialize(); err != nil {
-		log.Fatalf("Failed to init portaudio! " + err.Error())
-	}
+	CheckError(portaudio.Initialize(), "Failed to init portaudio!")
 	defer portaudio.Terminate()
+	fmt.Printf("Buffer size: %d\nSample rate: %d\nBuffer Duration: %dms\n", len(BUFFER), SAMPLE_RATE, BUFFER_DURATION)
 	switch os.Args[1] {
 	case "server":
 		Server()
@@ -52,7 +52,7 @@ func Server() {
 	fmt.Println("Client connected! Forwarding...")
 	CheckError(stream.Start(), "Cannot start streaming!")
 	defer stream.Stop()
-	time.Sleep(time.Second / 5)
+	time.Sleep(time.Millisecond * BUFFER_DURATION)
 	for {
 		CheckError(stream.Read(), "Failed to read streaming data!")
 		CheckError(binary.Write(conn, BYTE_ORDER, BUFFER), "Impossibly to write data to the client!")
@@ -76,18 +76,21 @@ func Client(server string) {
 		}
 		CheckError(err, "Impossibly to read from server!")
 		err = stream.Write()
-		if err == portaudio.StreamIsStopped {
-			CheckError(stream.Start(), "Failed to start streaming!")
-			stream.Write()
-		} else if err != portaudio.OutputUnderflowed && err != nil {
-			CheckError(err, "Cannot write to streamer!")
+		if err != nil {
+			if err == portaudio.StreamIsStopped {
+				// Start stream only when server sends the first chunk
+				CheckError(stream.Start(), "Failed to start streaming!")
+			} else if err == portaudio.OutputUnderflowed {
+				fmt.Println("Output underflowed!")
+			} else {
+				CheckError(err, "Cannot write to streamer!")
+			}
 		}
 	}
 }
 
 func CheckError(err error, message string) {
 	if err != nil {
-		fmt.Printf("%T %v", err, err)
-		log.Fatalf("%s %s\n", message, err.Error())
+		log.Fatalf("%s\n%s\n", message, err.Error())
 	}
 }
