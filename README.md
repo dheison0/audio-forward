@@ -30,6 +30,6 @@ Connect to server:
 ## Todo
 
   - [ ] Compress data before sending;
-  - [X] Fix some underrun on client(tested with a video from Akita on Rails and some musics);
+  - [ ] Fix some underrun on client;
   - [ ] User can set listening port;
   - [ ] Accept different sample rates.
